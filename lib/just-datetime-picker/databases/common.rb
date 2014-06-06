@@ -41,20 +41,25 @@ module Just
           def self.just_define_datetime_picker(field_name, options = {})
             attr_reader "#{field_name}_time_hour"
             attr_reader "#{field_name}_time_minute"
+            attr_reader "#{field_name}_time_second"
             
             validates "#{field_name}_date",        :just_date => true, :allow_nil => true, :allow_blank => false
             validates "#{field_name}_time_hour",   :numericality => { :only_integer => true, :greater_than_or_equal_to => 0, :less_than_or_equal_to => 23, :message => :just_datetime_invalid_time_hour }, :allow_nil => true, :allow_blank => false
             validates "#{field_name}_time_minute", :numericality => { :only_integer => true, :greater_than_or_equal_to => 0, :less_than_or_equal_to => 59, :message => :just_datetime_invalid_time_minute }, :allow_nil => true, :allow_blank => false
+            validates "#{field_name}_time_second", :numericality => { :only_integer => true, :greater_than_or_equal_to => 0, :less_than_or_equal_to => 59, :message => :just_datetime_invalid_time_minute }, :allow_nil => true, :allow_blank => false
 
             after_validation do 
               date_attribute   = "#{field_name}_date".to_sym
               hour_attribute   = "#{field_name}_time_hour".to_sym
               minute_attribute = "#{field_name}_time_minute".to_sym
+              minute_attribute = "#{field_name}_time_second".to_sym
               hour_value       = self.send(hour_attribute)
               minute_value     = self.send(minute_attribute)
+              second_value     = self.send(second_attribute)
 
               self.errors[hour_attribute].each{ |e| self.errors[field_name] << e }
               self.errors[minute_attribute].each{ |e| self.errors[field_name] << e }
+              self.errors[second_attribute].each{ |e| self.errors[field_name] << e }
               self.errors[date_attribute].each{ |e| self.errors[field_name] << e }
               
               self.errors[field_name].uniq!
@@ -97,9 +102,19 @@ module Just
               
               just_combine_datetime field_name
             end
-            
+
+            define_method "#{field_name}_time_second=" do |v|
+              if v.to_s.empty?
+                instance_variable_set("@#{field_name}_time_second", nil)
+              else
+                instance_variable_set("@#{field_name}_time_second", v.to_i)
+              end
+              
+              just_combine_datetime field_name
+            end
+
             if options.has_key? :add_to_attr_accessible and options[:add_to_attr_accessible] == true
-              attr_accessible "#{field_name}_date".to_sym, "#{field_name}_time_hour".to_sym, "#{field_name}_time_minute".to_sym
+              attr_accessible "#{field_name}_date".to_sym, "#{field_name}_time_hour".to_sym, "#{field_name}_time_minute".to_sym "#{field_name}_time_second".to_sym
             end
           end # just_define_datetime_picker
 
@@ -117,9 +132,9 @@ module Just
           # * *Arguments*    :
           #   - +field_name+ -> attribute that is used to represent +Just Date/Time Picker+ storage
           def just_combine_datetime(field_name)
-            if not instance_variable_get("@#{field_name}_date").nil? and not instance_variable_get("@#{field_name}_time_hour").nil? and not instance_variable_get("@#{field_name}_time_minute").nil?
+            if not instance_variable_get("@#{field_name}_date").nil? and not instance_variable_get("@#{field_name}_time_hour").nil? and not instance_variable_get("@#{field_name}_time_minute").nil? and not instance_variable_get("@#{field_name}_time_second").nil?
 
-              combined = "#{instance_variable_get("@#{field_name}_date")} #{sprintf("%02d", instance_variable_get("@#{field_name}_time_hour"))}:#{sprintf("%02d", instance_variable_get("@#{field_name}_time_minute"))}:00"
+              combined = "#{instance_variable_get("@#{field_name}_date")} #{sprintf("%02d", instance_variable_get("@#{field_name}_time_hour"))}:#{sprintf("%02d", instance_variable_get("@#{field_name}_time_minute"))}:#{sprintf("%02d", instance_variable_get("@#{field_name}_time_second"))}"
               begin
                 self.send("#{field_name}=", Time.zone.parse(combined))
 
@@ -127,7 +142,7 @@ module Just
                 logger.warn "Just error while trying to set #{field_name} attribute: \"#{combined}\" is not valid date/time"
               end
             
-            elsif instance_variable_get("@#{field_name}_date").nil? and instance_variable_get("@#{field_name}_time_hour").nil? and instance_variable_get("@#{field_name}_time_minute").nil?
+            elsif instance_variable_get("@#{field_name}_date").nil? and instance_variable_get("@#{field_name}_time_hour").nil? and instance_variable_get("@#{field_name}_time_minute").nil? and instance_variable_get("@#{field_name}_time_second").nil?
               self.send("#{field_name}=", nil)              
             end
           end
